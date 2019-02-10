@@ -1,0 +1,140 @@
+---
+title: "Data608_Module1"
+author: "Violet Stoyanova"
+date: "February 9, 2019"
+output: 
+ prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+#Intro
+I have provided you with data about the 5,000 fastest growing companies in the US, as compiled by Inc. magazine. lets read this in:Code
+And lets preview this data:
+```{r}
+
+library(magrittr)
+
+inc <- read.csv("https://raw.githubusercontent.com/charleyferrari/CUNY_DATA_608/master/module1/Data/inc5000_data.csv", header= TRUE)
+
+inc_df<-data.frame(inc, stringsAsFactors = TRUE)
+
+```
+
+```{r}
+head(inc_df)
+summary(inc_df)
+```
+
+Think a bit on what these summaries mean. Use the space below to add some more relevant non-visual exploratory information you think helps you understand this data:
+Looking at the summary one can see that some of the data is highly skewed, i.e. the number of Emplyoees as well as the Growth Rate 
+```{r}
+```
+
+
+The summary of this data shows that a lot of these fast growing companies are in California and are in the IR services industry.
+
+#Question 1. 
+Create a graph that shows the distribution of companies in the dataset by State (ie how many are in each state). There are a lot of States, so consider which axis you should use. This visualization is ultimately going to be consumed on a portrait oriented screen (ie taller than wide), which should further guide your layout choices.
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+theme_set(theme_tufte())  # from ggthemes
+data <- inc_df %>% 
+    group_by(State) %>% 
+    count()
+# plot
+g <- ggplot(data, aes(x=reorder(State, n), y=n))
+g + geom_tufteboxplot() + 
+      theme(axis.text.x = element_text(angle=65, vjust=0.6)) + coord_flip() +
+      labs(title="Fastest Growing Companies by State", 
+           subtitle="",
+           caption="Source: mpg",
+           x="State",
+           y="Growth Rate")
+
+
+```
+
+The graphic indicates that CA is the state with the fastest growing rate 
+
+
+#Question 2. 
+Lets dig in on the state with the 3rd most companies in the data set. Imagine you work for the state and are interested in how many people are employed by companies in different industries. Create a plot that shows the average and/or median employment by industry for companies in this state (only use cases with full data, use R complete.cases() function.) In addition to this, your graph should show how variable the ranges are, and you should deal with outliers.
+
+```{r}
+filter(data, n == sort(data$n, T)[3])
+```
+
+The State with the most 3rd companies is NY with 311
+```{r}
+library(ggplot2)
+theme_set(theme_bw())
+
+#Create subset for NY
+ny <- subset(inc_df, State=="NY")
+ny <- ny[complete.cases(ny$Industry), ] 
+ny <- ny[complete.cases(ny$Employees), ] 
+
+
+
+
+```
+
+```{r}
+# plot
+
+
+# find mean employees by industry
+means <- aggregate(Employees ~ Industry, ny, mean)
+
+# find maximum average employee no.
+means_max <- max(means$Employees)
+
+# prepare plot data: box plots (with outliers removed) to show variation; dots for mean EEs
+g <- ggplot(ny, aes(x = reorder(Industry,Employees,mean), y = Employees))
+g <- g + geom_boxplot(outlier.shape = NA, show.legend=F) + coord_flip() 
+    
+g <- g + labs(x = "Industry", y = "Employees", title="Mean Employee Size by Industry in NY")
+g <- g + labs(subtitle = "")
+g <- g + geom_point(data = means, aes(x=Industry, y=Employees), color='red', size = 2)
+g <- g + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+g <- g +  scale_y_continuous(limits = c(0,means_max), breaks = seq(0, means_max, 200))
+g
+```
+
+
+
+The plot above indicates that the mean data are highly skewed thus logarithmic scale mights give a better representation of the Employee count by Industry
+
+
+```{r}
+g <- g + scale_y_log10(limits = c(1, means_max))
+g <- g + labs(caption = "(grid line spacing on log scale)")
+g <- g + theme(plot.caption = element_text(size = 8))
+g
+```
+#Question 3. 
+Now imagine you work for an investor and want to see which industries generate the most revenue per employee. Create a chart that makes this information clear. Once again, the distribution per industry should be shown.
+
+```{r}
+r <- inc_df[complete.cases(inc_df$Revenue), ]
+r<- r[complete.cases(r$Employees), ] 
+
+r <- r %>%
+    group_by(Industry) %>%
+    summarise(RevenuePer = sum(Revenue)/sum(Employees)/1000000)
+
+g<- ggplot(r, aes(x=reorder(Industry, RevenuePer), y=RevenuePer)) +
+geom_bar(stat="identity", width=.5, fill="blue")+ 
+    labs(title="Revenue Per Employee by Industry",
+         y="Revenue per Employee", 
+         x="Industry") + 
+    theme_light(12) +
+    coord_flip()
+g
+```
+
+
+The above plot indicates that Computer Hardware genrates the most Revenue 
